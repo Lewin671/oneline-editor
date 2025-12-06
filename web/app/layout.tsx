@@ -15,6 +15,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const setInitialTheme = `
+    (function() {
+      try {
+        const stored = localStorage.getItem('theme-preference');
+        const mode = stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'auto';
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const resolved = mode === 'auto' ? (prefersDark ? 'dark' : 'light') : mode;
+        document.documentElement.classList.toggle('dark', resolved === 'dark');
+        document.documentElement.style.colorScheme = resolved;
+      } catch (e) {
+        console.warn('Failed to set initial theme', e);
+      }
+    })();
+  `;
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -23,6 +38,7 @@ export default function RootLayout({
           inter.variable,
         )}
       >
+        <script dangerouslySetInnerHTML={{ __html: setInitialTheme }} />
         {children}
       </body>
     </html>

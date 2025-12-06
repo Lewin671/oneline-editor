@@ -76,7 +76,12 @@ if (typeof window !== "undefined") {
 }
 
 export function CodeEditor() {
-  const { setEditorManager, setLSPManager, setIsConnected } = useEditorStore();
+  const {
+    setEditorManager,
+    setLSPManager,
+    setIsConnected,
+    resolvedTheme,
+  } = useEditorStore();
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
 
@@ -145,7 +150,7 @@ export function CodeEditor() {
       <Editor
         height="100%"
         defaultLanguage="typescript"
-        theme="vs-dark"
+        theme={resolvedTheme === "dark" ? "vs-dark" : "vs"}
         onMount={handleEditorDidMount}
         options={{
           minimap: { enabled: true },

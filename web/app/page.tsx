@@ -2,6 +2,8 @@
 
 import { FileTree, FileTreeNode } from "@/components/FileTree";
 import { StatusBar } from "@/components/StatusBar";
+import { ThemeManager } from "@/components/ThemeManager";
+import { TopBar } from "@/components/TopBar";
 import { useEditorStore } from "@/lib/store";
 import dynamic from "next/dynamic";
 import React, { useCallback, useState } from "react";
@@ -97,10 +99,12 @@ export default function Page() {
   );
 
   return (
-    <main className="flex h-screen flex-col overflow-hidden">
-      <div className="flex-1 flex overflow-hidden">
+    <main className="flex h-screen flex-col overflow-hidden bg-background">
+      <ThemeManager />
+      <TopBar />
+      <div className="flex flex-1 overflow-hidden">
         <FileTree files={files} onFileSelect={handleFileSelect} />
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex min-w-0 flex-1 flex-col">
           <CodeEditor />
         </div>
       </div>
