@@ -1,0 +1,25 @@
+{
+  "name": "online-code-editor",
+  "version": "1.0.0",
+  "description": "Web-based code editor with LSP support",
+  "private": true,
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm install --workspace=server && npm install --workspace=web",
+    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=web\"",
+    "build": "npm run build --workspace=server && npm run build --workspace=web",
+    "start": "npm run start --workspace=server",
+    "test": "npm run test --workspace=server && npm run test --workspace=web",
+    "test:unit": "npm run test:unit --workspace=server && npm run test:unit --workspace=web",
+    "test:property": "npm run test:property --workspace=server && npm run test:property --workspace=web"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
