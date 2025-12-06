@@ -6,6 +6,7 @@ import { VirtualFileSystem } from './fs/virtual.js';
 import { LanguageServerManager } from './lsp/manager.js';
 import { LSPWebSocketServer } from './transport/websocket.js';
 import { LSPProxy } from './lsp/proxy.js';
+import { createCloudAgent, type CloudAgentConfig } from './cloud/agent.js';
 
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -15,6 +16,20 @@ const __dirname = path.dirname(__filename);
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || '/tmp/online-editor';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
+
+// Cloud agent configuration
+const cloudAgentConfig: CloudAgentConfig = {
+  enabled: process.env.CLOUD_AGENT_ENABLED === 'true',
+  endpoint: process.env.CLOUD_AGENT_ENDPOINT || '',
+  apiKey: process.env.CLOUD_AGENT_API_KEY,
+  timeout: parseInt(process.env.CLOUD_AGENT_TIMEOUT || '5000', 10),
+  fallbackToLocal: process.env.CLOUD_AGENT_FALLBACK !== 'false'
+};
+
+// Create cloud agent if enabled
+const cloudAgent = cloudAgentConfig.enabled && cloudAgentConfig.endpoint
+  ? createCloudAgent(cloudAgentConfig)
+  : undefined;
 
 // Create Express app
 const app = express();
@@ -48,7 +63,7 @@ wsServer.onMethod('initialize', async (clientId, message) => {
   // Create proxy for this client
   const client = wsServer['clients'].get(clientId);
   if (client) {
-    const proxy = new LSPProxy(fileSystem, lsManager, client);
+    const proxy = new LSPProxy(fileSystem, lsManager, client, cloudAgent);
     clientProxies.set(clientId, proxy);
   }
   
@@ -86,7 +101,7 @@ wsServer.onMethod('textDocument/didOpen', async (clientId, message) => {
   if (!proxy) {
     const client = wsServer['clients'].get(clientId);
     if (client) {
-      proxy = new LSPProxy(fileSystem, lsManager, client);
+      proxy = new LSPProxy(fileSystem, lsManager, client, cloudAgent);
       clientProxies.set(clientId, proxy);
     }
   }
@@ -179,6 +194,7 @@ Server running on: http://localhost:${PORT}
 WebSocket endpoint: ws://localhost:${PORT}/lsp
 Workspace root: ${WORKSPACE_ROOT}
 Log level: ${LOG_LEVEL}
+Cloud agent: ${cloudAgent ? 'enabled' : 'disabled'}${cloudAgent ? ` (${cloudAgentConfig.endpoint})` : ''}
 
 Supported languages:
   - Go (gopls)

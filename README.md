@@ -99,7 +99,25 @@ WORKSPACE_ROOT=/tmp/online-editor
 
 # Logging
 LOG_LEVEL=info
+
+# Cloud Agent Configuration (optional)
+# Enable cloud-based code intelligence services
+CLOUD_AGENT_ENABLED=false
+CLOUD_AGENT_ENDPOINT=
+CLOUD_AGENT_API_KEY=
+CLOUD_AGENT_TIMEOUT=5000
+CLOUD_AGENT_FALLBACK=true
 ```
+
+### Cloud Agent
+
+The application supports optional delegation to cloud-based code intelligence services. When enabled, LSP requests (completion, hover, definition) will first attempt to use the cloud agent, falling back to local language servers if the cloud agent is unavailable or returns no results.
+
+To enable cloud agent:
+1. Set `CLOUD_AGENT_ENABLED=true`
+2. Configure `CLOUD_AGENT_ENDPOINT` with your cloud service URL
+3. Optionally set `CLOUD_AGENT_API_KEY` if authentication is required
+4. Set `CLOUD_AGENT_FALLBACK=false` to disable fallback to local LSP (not recommended)
 
 ## Project Structure
 

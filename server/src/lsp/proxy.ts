@@ -11,6 +11,7 @@ import {
   DefinitionParams,
   ReferenceParams
 } from 'vscode-languageserver-protocol';
+import { ICloudAgent } from '../cloud/agent.js';
 
 export interface LSPMessage {
   jsonrpc: '2.0';
@@ -35,7 +36,8 @@ export class LSPProxy {
   constructor(
     private fileSystem: VirtualFileSystem,
     private lsManager: LanguageServerManager,
-    private wsConnection: WebSocket
+    private wsConnection: WebSocket,
+    private cloudAgent?: ICloudAgent
   ) {}
 
   /**
@@ -278,6 +280,19 @@ export class LSPProxy {
     console.log(`[LSP Proxy] Handling completion request for ${params.textDocument.uri}`);
 
     return this.withUriLock(params.textDocument.uri, async () => {
+      // Try cloud agent first if available
+      if (this.cloudAgent) {
+        try {
+          const cloudResult = await this.cloudAgent.completion(params);
+          if (cloudResult !== null) {
+            console.log(`[LSP Proxy] Completion result from cloud agent`);
+            return cloudResult;
+          }
+        } catch (error) {
+          console.warn(`[LSP Proxy] Cloud agent completion failed, falling back to local LSP:`, error);
+        }
+      }
+
       const file = this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
         console.error(`[LSP Proxy] File not found: ${params.textDocument.uri}`);
@@ -311,6 +326,19 @@ export class LSPProxy {
    */
   private async handleHover(params: HoverParams): Promise<any> {
     return this.withUriLock(params.textDocument.uri, async () => {
+      // Try cloud agent first if available
+      if (this.cloudAgent) {
+        try {
+          const cloudResult = await this.cloudAgent.hover(params);
+          if (cloudResult !== null) {
+            console.log(`[LSP Proxy] Hover result from cloud agent`);
+            return cloudResult;
+          }
+        } catch (error) {
+          console.warn(`[LSP Proxy] Cloud agent hover failed, falling back to local LSP:`, error);
+        }
+      }
+
       const file = this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
         throw new Error(`File not found: ${params.textDocument.uri}`);
@@ -335,6 +363,19 @@ export class LSPProxy {
    */
   private async handleDefinition(params: DefinitionParams): Promise<any> {
     return this.withUriLock(params.textDocument.uri, async () => {
+      // Try cloud agent first if available
+      if (this.cloudAgent) {
+        try {
+          const cloudResult = await this.cloudAgent.definition(params);
+          if (cloudResult !== null) {
+            console.log(`[LSP Proxy] Definition result from cloud agent`);
+            return cloudResult;
+          }
+        } catch (error) {
+          console.warn(`[LSP Proxy] Cloud agent definition failed, falling back to local LSP:`, error);
+        }
+      }
+
       const file = this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
         throw new Error(`File not found: ${params.textDocument.uri}`);
