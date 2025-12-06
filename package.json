@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "install:all": "npm install && npm install --workspace=server && npm install --workspace=web",
-    "dev": "concurrently \"npm run dev --workspace=server\" \"npm run dev --workspace=web\"",
+    "dev": "concurrently \"cd server && npm run dev\" \"cd web && npm run dev\"",
     "build": "npm run build --workspace=server && npm run build --workspace=web",
     "start": "npm run start --workspace=server",
     "test": "npm run test --workspace=server && npm run test --workspace=web",

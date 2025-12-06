@@ -46,4 +46,14 @@ describe('VirtualFileSystem', () => {
     vfs.updateFile('file:///test.go', 'v3');
     expect(vfs.getFile('file:///test.go')?.version).toBe(3);
   });
+
+  it('should place temp files under the temp dir for file URIs', () => {
+    const tempPath = vfs.getTempPath('file:///src/index.ts');
+    expect(tempPath).toBe('/tmp/test/src/index.ts');
+  });
+
+  it('should place temp files under the temp dir for absolute paths without scheme', () => {
+    const tempPath = vfs.getTempPath('/src/index.ts');
+    expect(tempPath).toBe('/tmp/test/src/index.ts');
+  });
 });

@@ -12,7 +12,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load environment variables
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || '3001', 10);
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || '/tmp/online-editor';
 const LOG_LEVEL = process.env.LOG_LEVEL || 'info';
 

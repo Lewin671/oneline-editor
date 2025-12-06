@@ -95,12 +95,20 @@ export class VirtualFileSystem {
    * Convert URI to temporary file path
    */
   public getTempPath(uri: string): string {
+    const normalizePath = (rawPath: string): string => {
+      // Strip leading slashes so path.join doesn't escape the temp dir
+      const withoutLeadingSlash = rawPath.replace(/^[/\\]+/, '');
+      // Normalize to collapse any .. segments
+      return path.normalize(withoutLeadingSlash);
+    };
+
+    // Try parsing as a URL first (e.g., file:// URIs)
     try {
       const parsed = new URL(uri);
-      return path.join(this.tempDir, parsed.pathname);
+      return path.join(this.tempDir, normalizePath(parsed.pathname));
     } catch {
-      // If not a valid URL, treat as relative path
-      return path.join(this.tempDir, uri);
+      // If not a valid URL, treat as relative path/string identifier
+      return path.join(this.tempDir, normalizePath(uri));
     }
   }
 
