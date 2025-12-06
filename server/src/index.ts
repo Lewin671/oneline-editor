@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { VirtualFileSystem } from './fs/virtual.js';
+import { RealFileSystem } from './fs/real.js';
 import { LanguageServerManager } from './lsp/manager.js';
 import { LSPWebSocketServer } from './transport/websocket.js';
 import { LSPProxy } from './lsp/proxy.js';
@@ -34,7 +35,7 @@ app.get('/health', (req, res) => {
 });
 
 // Initialize core components
-const fileSystem = new VirtualFileSystem(WORKSPACE_ROOT);
+const fileSystem = new RealFileSystem(WORKSPACE_ROOT);
 const lsManager = new LanguageServerManager(WORKSPACE_ROOT);
 const wsServer = new LSPWebSocketServer(server, '/lsp');
 

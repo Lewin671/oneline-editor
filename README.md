@@ -8,7 +8,7 @@ A modern web-based code editor with Language Server Protocol (LSP) support for G
 - 🔍 Intelligent code completion, hover information, and go-to-definition
 - 🐛 Real-time error diagnostics
 - 🌐 WebSocket-based communication
-- 📁 Virtual file system
+- 📁 Real file system integration (directly maps to workspace directory)
 - 🎨 Modern dark theme UI
 - 🔧 Support for Go, TypeScript, and JavaScript
 
@@ -83,7 +83,7 @@ The server will serve the built frontend and handle LSP requests on `http://loca
 
 ## Environment Variables
 
-Create a `.env` file in the root directory (see `.env.example`):
+The server automatically loads environment variables from a `.env` file in the root directory (see `.env.example`):
 
 ```env
 # Server Configuration
@@ -95,11 +95,15 @@ GOPLS_PATH=gopls
 TS_SERVER_PATH=typescript-language-server
 
 # Workspace Configuration
+# This is the root directory where all code files will be stored
+# The server will directly map to this directory instead of using virtual files
 WORKSPACE_ROOT=/tmp/online-editor
 
 # Logging
 LOG_LEVEL=info
 ```
+
+**Important**: Make sure the `WORKSPACE_ROOT` directory exists and has proper read/write permissions before starting the server.
 
 ## Project Structure
 
@@ -109,7 +113,7 @@ online-editor/
 │   ├── src/
 │   │   ├── index.ts       # Server entry point
 │   │   ├── lsp/           # LSP proxy and manager
-│   │   ├── fs/            # Virtual file system
+│   │   ├── fs/            # File system (real and virtual implementations)
 │   │   └── transport/     # WebSocket transport
 │   └── tests/             # Backend tests
 ├── web/                    # Frontend code
@@ -153,7 +157,7 @@ The application uses a client-server architecture:
    - Express server for HTTP
    - WebSocket server for LSP communication
    - LSP Proxy to route requests to Language Servers
-   - Virtual File System for managing code files
+   - Real File System for managing code files directly on disk
    - Language Server Manager for lifecycle management
 
 3. **Language Servers**:

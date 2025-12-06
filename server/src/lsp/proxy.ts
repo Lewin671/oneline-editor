@@ -1,4 +1,4 @@
-import { VirtualFileSystem } from '../fs/virtual.js';
+import { RealFileSystem } from '../fs/real.js';
 import { LanguageServerManager } from './manager.js';
 import { WebSocket } from 'ws';
 import {
@@ -28,12 +28,9 @@ export interface LSPMessage {
 export class LSPProxy {
   // Serialize per-document operations to keep order (didChange before completion, etc.)
   private uriLocks: Map<string, Promise<any>> = new Map();
-  private mapTempUriToOriginal = (uri: string): string => {
-    return this.fileSystem.resolveOriginalUri(uri) || uri;
-  };
 
   constructor(
-    private fileSystem: VirtualFileSystem,
+    private fileSystem: RealFileSystem,
     private lsManager: LanguageServerManager,
     private wsConnection: WebSocket
   ) {}
@@ -125,30 +122,28 @@ export class LSPProxy {
 
     await this.withUriLock(textDocument.uri, async () => {
 
-      // Save to virtual file system
-      this.fileSystem.createFile(
+      // Save to real file system
+      await this.fileSystem.createFile(
         textDocument.uri,
         textDocument.text,
         textDocument.languageId
       );
 
-      // Write to temp directory
-      const tempPath = await this.fileSystem.writeToTempDir(textDocument.uri);
-      console.log(`[LSP Proxy] File written to: ${tempPath}`);
+      const filePath = this.fileSystem.uriToPath(textDocument.uri);
+      console.log(`[LSP Proxy] File created at: ${filePath}`);
 
       // Get or create Language Server client
       const client = await this.lsManager.getOrCreateClient(textDocument.languageId, {
-        wsConnection: this.wsConnection,
-        mapUri: this.mapTempUriToOriginal
+        wsConnection: this.wsConnection
       });
 
-      // Forward to Language Server with the temp file URI
-      const tempUri = `file://${tempPath}`;
-      console.log(`[LSP Proxy] Forwarding didOpen to LS with URI: ${tempUri}`);
+      // Forward to Language Server with the real file URI
+      const realUri = `file://${filePath}`;
+      console.log(`[LSP Proxy] Forwarding didOpen to LS with URI: ${realUri}`);
       
       client.didOpen({
         textDocument: {
-          uri: tempUri,
+          uri: realUri,
           languageId: textDocument.languageId,
           version: textDocument.version,
           text: textDocument.text
@@ -166,18 +161,18 @@ export class LSPProxy {
     console.log(`[LSP Proxy] didChange: ${textDocument.uri}`);
 
     await this.withUriLock(textDocument.uri, async () => {
-      // Update virtual file system
+      // Update real file system
       if (contentChanges.length > 0) {
         const lastChange = contentChanges[contentChanges.length - 1];
         if ('text' in lastChange) {
-          this.fileSystem.updateFile(textDocument.uri, lastChange.text);
-          const tempPath = await this.fileSystem.writeToTempDir(textDocument.uri);
-          console.log(`[LSP Proxy] Updated file at: ${tempPath}`);
+          await this.fileSystem.updateFile(textDocument.uri, lastChange.text);
+          const filePath = this.fileSystem.uriToPath(textDocument.uri);
+          console.log(`[LSP Proxy] Updated file at: ${filePath}`);
         }
       }
 
       // Get file info
-      const file = this.fileSystem.getFile(textDocument.uri);
+      const file = await this.fileSystem.getFile(textDocument.uri);
       if (!file) {
         console.warn(`[LSP Proxy] File not found: ${textDocument.uri}`);
         return;
@@ -185,19 +180,18 @@ export class LSPProxy {
 
       // Get Language Server client
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
-        wsConnection: this.wsConnection,
-        mapUri: this.mapTempUriToOriginal
+        wsConnection: this.wsConnection
       });
 
-      // Forward to Language Server with temp file URI
-      const tempPath = this.fileSystem.getTempPath(textDocument.uri);
-      const tempUri = `file://${tempPath}`;
+      // Forward to Language Server with real file URI
+      const filePath = this.fileSystem.uriToPath(textDocument.uri);
+      const realUri = `file://${filePath}`;
       
       // Always send full content to ensure LSP has accurate file state
       // This is more reliable than forwarding incremental changes
       client.didChange({
         textDocument: {
-          uri: tempUri,
+          uri: realUri,
           version: textDocument.version
         },
         contentChanges: [{
@@ -217,25 +211,24 @@ export class LSPProxy {
 
     await this.withUriLock(textDocument.uri, async () => {
       // Get file info before deleting
-      const file = this.fileSystem.getFile(textDocument.uri);
+      const file = await this.fileSystem.getFile(textDocument.uri);
       if (!file) {
         return;
       }
 
-      // Forward to Language Server with temp file URI
+      // Forward to Language Server with real file URI
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
-        wsConnection: this.wsConnection,
-        mapUri: this.mapTempUriToOriginal
+        wsConnection: this.wsConnection
       });
-      const tempPath = this.fileSystem.getTempPath(textDocument.uri);
-      const tempUri = `file://${tempPath}`;
+      const filePath = this.fileSystem.uriToPath(textDocument.uri);
+      const realUri = `file://${filePath}`;
       
       client.didClose({
-        textDocument: { uri: tempUri }
+        textDocument: { uri: realUri }
       });
 
-      // Remove from virtual file system
-      this.fileSystem.deleteFile(textDocument.uri);
+      // Remove from file system
+      await this.fileSystem.deleteFile(textDocument.uri);
     });
   }
 
@@ -248,24 +241,20 @@ export class LSPProxy {
     console.log(`[LSP Proxy] didSave: ${textDocument.uri}`);
 
     await this.withUriLock(textDocument.uri, async () => {
-      const file = this.fileSystem.getFile(textDocument.uri);
+      const file = await this.fileSystem.getFile(textDocument.uri);
       if (!file) {
         return;
       }
 
-      // Write to temp directory
-      await this.fileSystem.writeToTempDir(textDocument.uri);
-
-      // Forward to Language Server with temp file URI
+      // Forward to Language Server with real file URI
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
-        wsConnection: this.wsConnection,
-        mapUri: this.mapTempUriToOriginal
+        wsConnection: this.wsConnection
       });
-      const tempPath = this.fileSystem.getTempPath(textDocument.uri);
-      const tempUri = `file://${tempPath}`;
+      const filePath = this.fileSystem.uriToPath(textDocument.uri);
+      const realUri = `file://${filePath}`;
       
       client.didSave({
-        textDocument: { uri: tempUri },
+        textDocument: { uri: realUri },
         text
       });
     });
@@ -278,7 +267,7 @@ export class LSPProxy {
     console.log(`[LSP Proxy] Handling completion request for ${params.textDocument.uri}`);
 
     return this.withUriLock(params.textDocument.uri, async () => {
-      const file = this.fileSystem.getFile(params.textDocument.uri);
+      const file = await this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
         console.error(`[LSP Proxy] File not found: ${params.textDocument.uri}`);
         throw new Error(`File not found: ${params.textDocument.uri}`);
@@ -286,17 +275,16 @@ export class LSPProxy {
 
       console.log(`[LSP Proxy] File found, language: ${file.languageId}`);
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
-        wsConnection: this.wsConnection,
-        mapUri: this.mapTempUriToOriginal
+        wsConnection: this.wsConnection
       });
       
-      // Ensure latest content is flushed to temp path before requesting completion
-      const tempPath = await this.fileSystem.writeToTempDir(params.textDocument.uri);
-      const tempUri = `file://${tempPath}`;
+      // Get real file path
+      const filePath = this.fileSystem.uriToPath(params.textDocument.uri);
+      const realUri = `file://${filePath}`;
       
-      console.log(`[LSP Proxy] Sending completion request to language server with URI: ${tempUri}`);
+      console.log(`[LSP Proxy] Sending completion request to language server with URI: ${realUri}`);
       const result = await client.sendRequest('textDocument/completion', {
-        textDocument: { uri: tempUri },
+        textDocument: { uri: realUri },
         position: params.position,
         context: params.context
       });
@@ -311,20 +299,19 @@ export class LSPProxy {
    */
   private async handleHover(params: HoverParams): Promise<any> {
     return this.withUriLock(params.textDocument.uri, async () => {
-      const file = this.fileSystem.getFile(params.textDocument.uri);
+      const file = await this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
         throw new Error(`File not found: ${params.textDocument.uri}`);
       }
 
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
-        wsConnection: this.wsConnection,
-        mapUri: this.mapTempUriToOriginal
+        wsConnection: this.wsConnection
       });
-      const tempPath = await this.fileSystem.writeToTempDir(params.textDocument.uri);
-      const tempUri = `file://${tempPath}`;
+      const filePath = this.fileSystem.uriToPath(params.textDocument.uri);
+      const realUri = `file://${filePath}`;
       
       return client.sendRequest('textDocument/hover', {
-        textDocument: { uri: tempUri },
+        textDocument: { uri: realUri },
         position: params.position
       });
     });
@@ -335,20 +322,19 @@ export class LSPProxy {
    */
   private async handleDefinition(params: DefinitionParams): Promise<any> {
     return this.withUriLock(params.textDocument.uri, async () => {
-      const file = this.fileSystem.getFile(params.textDocument.uri);
+      const file = await this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
         throw new Error(`File not found: ${params.textDocument.uri}`);
       }
 
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
-        wsConnection: this.wsConnection,
-        mapUri: this.mapTempUriToOriginal
+        wsConnection: this.wsConnection
       });
-      const tempPath = await this.fileSystem.writeToTempDir(params.textDocument.uri);
-      const tempUri = `file://${tempPath}`;
+      const filePath = this.fileSystem.uriToPath(params.textDocument.uri);
+      const realUri = `file://${filePath}`;
       
       return client.sendRequest('textDocument/definition', {
-        textDocument: { uri: tempUri },
+        textDocument: { uri: realUri },
         position: params.position
       });
     });
@@ -359,20 +345,19 @@ export class LSPProxy {
    */
   private async handleReferences(params: ReferenceParams): Promise<any> {
     return this.withUriLock(params.textDocument.uri, async () => {
-      const file = this.fileSystem.getFile(params.textDocument.uri);
+      const file = await this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
         throw new Error(`File not found: ${params.textDocument.uri}`);
       }
 
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
-        wsConnection: this.wsConnection,
-        mapUri: this.mapTempUriToOriginal
+        wsConnection: this.wsConnection
       });
-      const tempPath = await this.fileSystem.writeToTempDir(params.textDocument.uri);
-      const tempUri = `file://${tempPath}`;
+      const filePath = this.fileSystem.uriToPath(params.textDocument.uri);
+      const realUri = `file://${filePath}`;
       
       return client.sendRequest('textDocument/references', {
-        textDocument: { uri: tempUri },
+        textDocument: { uri: realUri },
         position: params.position,
         context: params.context
       });
