@@ -27,11 +27,8 @@ const getLanguageIdFromPath = (path: string): string => {
 };
 
 export default function Page() {
-  const {
-    editorManager,
-    setCurrentFile,
-    setCurrentLanguageId,
-  } = useEditorStore();
+  const { editorManager, setCurrentFile, setCurrentLanguageId } =
+    useEditorStore();
   const [files, setFiles] = useState<FileTreeNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   // Store pending file to open when editorManager is not yet ready
@@ -43,29 +40,34 @@ export default function Page() {
 
   // Fetch file tree on mount
   useEffect(() => {
-    const fetchFiles = async () => {
-      try {
-        const response = await fetch('http://localhost:3001/api/files');
-        if (response.ok) {
-          const fileTree = await response.json();
-          setFiles(fileTree);
-        } else {
-          console.error('Failed to fetch file tree');
-        }
-      } catch (error) {
-        console.error('Error fetching file tree:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchFiles();
   }, []);
+
+  const fetchFiles = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("http://localhost:3001/api/files");
+      if (response.ok) {
+        const fileTree = await response.json();
+        setFiles(fileTree);
+      } else {
+        console.error("Failed to fetch file tree");
+      }
+    } catch (error) {
+      console.error("Error fetching file tree:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Open pending file when editorManager becomes ready
   useEffect(() => {
     if (editorManager && pendingFile) {
-      editorManager.openFile(pendingFile.path, pendingFile.content, pendingFile.languageId);
+      editorManager.openFile(
+        pendingFile.path,
+        pendingFile.content,
+        pendingFile.languageId,
+      );
       setPendingFile(null);
     }
   }, [editorManager, pendingFile]);
@@ -80,7 +82,7 @@ export default function Page() {
         // Fetch file content from server
         const response = await fetch(`http://localhost:3001/api/file${path}`);
         if (!response.ok) {
-          console.error('Failed to fetch file content');
+          console.error("Failed to fetch file content");
           return;
         }
         const content = await response.text();
@@ -94,14 +96,10 @@ export default function Page() {
         // Open file in editor - LSP sync is handled automatically via onFileOpen listener
         editorManager.openFile(path, content, languageId);
       } catch (error) {
-        console.error('Error loading file:', error);
+        console.error("Error loading file:", error);
       }
     },
-    [
-      editorManager,
-      setCurrentFile,
-      setCurrentLanguageId,
-    ],
+    [editorManager, setCurrentFile, setCurrentLanguageId],
   );
 
   return (
@@ -109,9 +107,10 @@ export default function Page() {
       <ThemeManager />
       <TopBar />
       <div className="flex flex-1 overflow-hidden">
-        <FileTree 
-          files={files} 
+        <FileTree
+          files={files}
           onFileSelect={handleFileSelect}
+          onRefresh={fetchFiles}
           isLoading={isLoading}
         />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

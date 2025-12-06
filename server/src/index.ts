@@ -81,6 +81,88 @@ app.get('/api/file/*', async (req, res) => {
   }
 });
 
+// API endpoint to create a new file
+app.post('/api/file/*', async (req, res) => {
+  try {
+    const params = req.params as { '0'?: string };
+    const requestPath = params['0'];
+    if (!requestPath) {
+      res.status(400).json({ error: 'File path is required' });
+      return;
+    }
+    
+    const filePath = '/' + requestPath;
+    const content = req.body.content || '';
+    const languageId = req.body.languageId || 'plaintext';
+    
+    const uri = `file://${filePath}`;
+    await fileSystem.createFile(uri, content, languageId);
+    res.json({ success: true, path: filePath });
+  } catch (error) {
+    console.error('[API] Error creating file:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create file';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// API endpoint to create a new directory
+app.post('/api/folder/*', async (req, res) => {
+  try {
+    const params = req.params as { '0'?: string };
+    const requestPath = params['0'];
+    if (!requestPath) {
+      res.status(400).json({ error: 'Folder path is required' });
+      return;
+    }
+    
+    const folderPath = '/' + requestPath;
+    await fileSystem.createDirectory(folderPath);
+    res.json({ success: true, path: folderPath });
+  } catch (error) {
+    console.error('[API] Error creating folder:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create folder';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// API endpoint to delete a file or directory
+app.delete('/api/path/*', async (req, res) => {
+  try {
+    const params = req.params as { '0'?: string };
+    const requestPath = params['0'];
+    if (!requestPath) {
+      res.status(400).json({ error: 'Path is required' });
+      return;
+    }
+    
+    const targetPath = '/' + requestPath;
+    await fileSystem.deletePath(targetPath);
+    res.json({ success: true, path: targetPath });
+  } catch (error) {
+    console.error('[API] Error deleting path:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
+// API endpoint to rename a file or directory
+app.put('/api/rename', async (req, res) => {
+  try {
+    const { oldPath, newPath } = req.body;
+    if (!oldPath || !newPath) {
+      res.status(400).json({ error: 'Both oldPath and newPath are required' });
+      return;
+    }
+    
+    await fileSystem.renamePath(oldPath, newPath);
+    res.json({ success: true, oldPath, newPath });
+  } catch (error) {
+    console.error('[API] Error renaming:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to rename';
+    res.status(500).json({ error: errorMessage });
+  }
+});
+
 // Store proxies per client
 const clientProxies = new Map<string, LSPProxy>();
 
