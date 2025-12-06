@@ -1,5 +1,5 @@
 import { LanguageClient, StdioTransport } from '@lewin671/lsp-client';
-import { ServerHost } from './host.js';
+import { ServerHost, ServerWindow } from './host.js';
 import { WebSocket } from 'ws';
 
 export interface LanguageServerConfig {
@@ -11,6 +11,7 @@ export interface LanguageServerConfig {
 
 interface ClientInfo {
   client: LanguageClient;
+  host: ServerHost;
   lastUsed: number;
   idleTimer?: NodeJS.Timeout;
 }
@@ -79,6 +80,12 @@ export class LanguageServerManager {
         this.stopClient(languageId);
       }, this.idleTimeout);
 
+      // If a new WebSocket connection is provided (e.g. after a page refresh),
+      // rebind the host window so diagnostics flow to the latest client session.
+      if (options?.wsConnection && clientInfo.host.window instanceof ServerWindow) {
+        clientInfo.host.window.setConnection(options.wsConnection, options.mapUri);
+      }
+
       return clientInfo.client;
     }
 
@@ -138,6 +145,7 @@ export class LanguageServerManager {
           // Store client info
           const info: ClientInfo = {
             client,
+            host,
             lastUsed: Date.now(),
             idleTimer: setTimeout(() => {
               this.stopClient(languageId);

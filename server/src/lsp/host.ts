@@ -11,6 +11,17 @@ export class ServerWindow implements IWindow {
     private mapUri?: (uri: string) => string
   ) {}
 
+  /**
+   * Rebind diagnostics/messages to a new WebSocket connection.
+   * This allows us to reuse an existing language server client when the frontend reconnects.
+   */
+  setConnection(wsConnection?: WebSocket, mapUri?: (uri: string) => string): void {
+    this.wsConnection = wsConnection;
+    if (mapUri) {
+      this.mapUri = mapUri;
+    }
+  }
+
   showMessage(type: MessageType, message: string): void {
     if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
       this.wsConnection.send(JSON.stringify({
