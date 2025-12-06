@@ -68,9 +68,10 @@ export class BrowserWindow implements IWindow {
 
     if (!model) {
       const targetPath = monaco.Uri.parse(uri).path;
-      model = monaco.editor
+      const found = monaco.editor
         .getModels()
         .find((m) => targetPath.endsWith(m.uri.path) || m.uri.path.endsWith(targetPath));
+      model = found ?? null;
       if (model) {
         targetUri = model.uri.toString();
       }
@@ -165,7 +166,8 @@ export class BrowserWindow implements IWindow {
     // If not found, try fuzzy matching
     if (!diagnostics) {
       const targetPath = monaco.Uri.parse(uri).path;
-      for (const [key, value] of this.diagnosticsMap.entries()) {
+      Array.from(this.diagnosticsMap.entries()).forEach(([key, value]) => {
+        if (diagnostics) return; // already found
         const keyPath = monaco.Uri.parse(key).path;
         // Check if paths match (ignoring scheme/host differences)
         if (
@@ -175,9 +177,8 @@ export class BrowserWindow implements IWindow {
         ) {
           console.log(`[LSP] Found fuzzy match for ${uri} -> ${key}`);
           diagnostics = value;
-          break;
         }
-      }
+      });
     }
 
     if (diagnostics) {
