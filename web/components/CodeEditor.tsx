@@ -237,6 +237,12 @@ export function CodeEditor() {
     const editor = editorRef.current;
     if (!editor) return;
 
+    // Sync the active model immediately (e.g. after switching files)
+    const currentModel = editor.getModel();
+    if (currentModel) {
+      updateDiagnosticsForUri(currentModel.uri);
+    }
+
     // Recompute diagnostics when switching models so counts stay fresh
     const modelListener = editor.onDidChangeModel(() => {
       const model = editor.getModel();
@@ -254,7 +260,7 @@ export function CodeEditor() {
       dispose.dispose();
       modelListener?.dispose();
     };
-  }, [updateDiagnosticsForUri]);
+  }, [editorManager, updateDiagnosticsForUri]);
 
   return (
     <div className="h-full w-full overflow-hidden rounded-md border bg-background">
