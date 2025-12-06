@@ -6,7 +6,10 @@ import { WebSocket } from 'ws';
  * Server Window implementation that forwards messages through WebSocket
  */
 export class ServerWindow implements IWindow {
-  constructor(private wsConnection?: WebSocket) {}
+  constructor(
+    private wsConnection?: WebSocket,
+    private mapUri?: (uri: string) => string
+  ) {}
 
   showMessage(type: MessageType, message: string): void {
     if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
@@ -46,14 +49,15 @@ export class ServerWindow implements IWindow {
   }
 
   publishDiagnostics(uri: string, diagnostics: Diagnostic[]): void {
+    const targetUri = this.mapUri ? this.mapUri(uri) : uri;
     if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
       this.wsConnection.send(JSON.stringify({
         jsonrpc: '2.0',
         method: 'textDocument/publishDiagnostics',
-        params: { uri, diagnostics }
+        params: { uri: targetUri, diagnostics }
       }));
     } else {
-      console.log(`[Diagnostics] ${uri}: ${diagnostics.length} issue(s)`);
+      console.log(`[Diagnostics] ${targetUri}: ${diagnostics.length} issue(s)`);
     }
   }
 }
@@ -62,6 +66,8 @@ export class ServerWindow implements IWindow {
  * Console-only Window implementation for when no WebSocket is available
  */
 export class ConsoleWindow implements IWindow {
+  constructor(private mapUri?: (uri: string) => string) {}
+
   showMessage(type: MessageType, message: string): void {
     const typeStr = type === MessageType.Error ? 'ERROR' :
                     type === MessageType.Warning ? 'WARNING' :
@@ -89,7 +95,8 @@ export class ConsoleWindow implements IWindow {
   }
 
   publishDiagnostics(uri: string, diagnostics: Diagnostic[]): void {
-    console.log(`[Diagnostics] ${uri}: ${diagnostics.length} issue(s)`);
+    const targetUri = this.mapUri ? this.mapUri(uri) : uri;
+    console.log(`[Diagnostics] ${targetUri}: ${diagnostics.length} issue(s)`);
     diagnostics.forEach(d => {
       const severity = d.severity === 1 ? 'Error' :
                       d.severity === 2 ? 'Warning' : 'Info';
@@ -132,8 +139,13 @@ export class ServerHost implements IHost {
   workspace: IWorkspace;
   configuration: IConfiguration;
 
-  constructor(workspaceRoot: string, wsConnection?: WebSocket, config?: Record<string, any>) {
-    this.window = wsConnection ? new ServerWindow(wsConnection) : new ConsoleWindow();
+  constructor(
+    workspaceRoot: string,
+    wsConnection?: WebSocket,
+    config?: Record<string, any>,
+    mapUri?: (uri: string) => string
+  ) {
+    this.window = wsConnection ? new ServerWindow(wsConnection, mapUri) : new ConsoleWindow(mapUri);
     this.workspace = new ServerWorkspace(`file://${workspaceRoot}`);
     this.configuration = new ServerConfiguration(config);
   }

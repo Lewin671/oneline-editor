@@ -10,6 +10,7 @@ import {
   MessageActionItem,
   MessageType,
 } from "vscode-languageserver-protocol";
+import { useEditorStore } from "../store";
 
 export class BrowserWindow implements IWindow {
   private diagnosticsMap: Map<string, Diagnostic[]> = new Map();
@@ -61,14 +62,54 @@ export class BrowserWindow implements IWindow {
   }
 
   publishDiagnostics(uri: string, diagnostics: Diagnostic[]): void {
-    this.diagnosticsMap.set(uri, diagnostics);
+    let targetUri = uri;
+    let model = monaco.editor.getModel(monaco.Uri.parse(uri));
 
-    // Convert diagnostics to Monaco markers
-    const model = monaco.editor.getModel(monaco.Uri.parse(uri));
+    if (!model) {
+      const targetPath = monaco.Uri.parse(uri).path;
+      model = monaco.editor
+        .getModels()
+        .find((m) => targetPath.endsWith(m.uri.path) || m.uri.path.endsWith(targetPath));
+      if (model) {
+        targetUri = model.uri.toString();
+      }
+    }
+
+    this.diagnosticsMap.set(targetUri, diagnostics);
+
     if (model) {
       const markers = diagnostics.map((d) => this.convertDiagnosticToMarker(d));
       monaco.editor.setModelMarkers(model, "lsp", markers);
     }
+
+    // Also push diagnostics into the shared store so the Problems UI updates
+    const severityToLabel = (severity?: number): "error" | "warning" | "info" | "hint" => {
+      switch (severity) {
+        case 1:
+          return "error";
+        case 2:
+          return "warning";
+        case 3:
+          return "info";
+        case 4:
+        default:
+          return "hint";
+      }
+    };
+
+    const errors = diagnostics.filter((d) => d.severity === 1).length;
+    const warnings = diagnostics.filter((d) => d.severity === 2).length;
+    const details = diagnostics.map((d) => ({
+      uri: targetUri,
+      message: d.message,
+      severity: severityToLabel(d.severity),
+      line: d.range.start.line + 1,
+      column: d.range.start.character + 1,
+      source: d.source,
+      code: d.code?.toString(),
+    }));
+
+    useEditorStore.getState().setDiagnostics(targetUri, { errors, warnings }, details);
   }
 
   private convertDiagnosticToMarker(

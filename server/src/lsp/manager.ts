@@ -1,5 +1,6 @@
 import { LanguageClient, StdioTransport } from '@lewin671/lsp-client';
 import { ServerHost } from './host.js';
+import { WebSocket } from 'ws';
 
 export interface LanguageServerConfig {
   languageId: string;
@@ -12,6 +13,11 @@ interface ClientInfo {
   client: LanguageClient;
   lastUsed: number;
   idleTimer?: NodeJS.Timeout;
+}
+
+interface ClientOptions {
+  wsConnection?: WebSocket;
+  mapUri?: (uri: string) => string;
 }
 
 export class LanguageServerManager {
@@ -56,7 +62,7 @@ export class LanguageServerManager {
   /**
    * Get or create a Language Server client for the specified language
    */
-  async getOrCreateClient(languageId: string): Promise<LanguageClient> {
+  async getOrCreateClient(languageId: string, options?: ClientOptions): Promise<LanguageClient> {
     const clientInfo = this.clients.get(languageId);
 
     if (clientInfo) {
@@ -97,7 +103,7 @@ export class LanguageServerManager {
       while (retryCount <= maxRetries) {
         try {
           const transport = new StdioTransport(config.command, config.args);
-          const host = new ServerHost(this.workspaceRoot);
+          const host = new ServerHost(this.workspaceRoot, options?.wsConnection, undefined, options?.mapUri);
 
           const client = new LanguageClient(
             host,
