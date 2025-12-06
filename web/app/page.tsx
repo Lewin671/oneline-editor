@@ -77,7 +77,6 @@ export default function Page() {
     lspManager,
     setCurrentFile,
     setCurrentLanguageId,
-    setDiagnostics,
   } = useEditorStore();
   const [files] = useState<FileTreeNode[]>(initialFiles);
 
@@ -96,8 +95,8 @@ export default function Page() {
 
       const model = editorManager.getModel(path);
       if (model) {
-        // Seed diagnostics for UI so the status bar shows 0/0 immediately
-        setDiagnostics(model.uri.toString(), { errors: 0, warnings: 0 }, []);
+        // Note: Don't reset diagnostics here. They will be updated by LSP's publishDiagnostics.
+        // The reapplyDiagnostics call in onFileOpen will restore cached diagnostics if available.
 
         if (lspManager && !lspManager.isDocumentOpen(model.uri.toString())) {
           lspManager.didOpenTextDocument(
@@ -114,7 +113,6 @@ export default function Page() {
       lspManager,
       setCurrentFile,
       setCurrentLanguageId,
-      setDiagnostics,
     ],
   );
 

@@ -72,17 +72,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   setCurrentLanguageId: (languageId) => set({ currentLanguageId: languageId }),
   setFiles: (files) => set({ files }),
   setIsConnected: (connected) => set({ isConnected: connected }),
-  setDiagnostics: (uri, summary, items = []) =>
-    set((state) => ({
-      diagnosticsByUri: {
-        ...state.diagnosticsByUri,
-        [uri]: summary,
-      },
-      diagnosticItemsByUri: {
-        ...state.diagnosticItemsByUri,
-        [uri]: items,
-      },
-    })),
+  setDiagnostics: (uri, summary, items = []) => {
+    console.log(`[Store] setDiagnostics called: uri=${uri}, errors=${summary.errors}, warnings=${summary.warnings}, items=${items.length}`);
+    set((state) => {
+      const newState = {
+        diagnosticsByUri: {
+          ...state.diagnosticsByUri,
+          [uri]: summary,
+        },
+        diagnosticItemsByUri: {
+          ...state.diagnosticItemsByUri,
+          [uri]: items,
+        },
+      };
+      console.log(`[Store] New diagnosticsByUri keys:`, Object.keys(newState.diagnosticsByUri));
+      return newState;
+    });
+  },
   setProblemsOpen: (open) => set({ isProblemsOpen: open }),
   setThemeMode: (mode) => {
     const resolvedTheme = resolveTheme(mode);

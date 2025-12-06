@@ -2,7 +2,7 @@ import { LanguageClient } from "@lewin671/lsp-client";
 import * as monaco from "monaco-editor";
 import { EditorManager } from "../editor/manager";
 import { WebSocketTransport } from "../transport/websocket";
-import { BrowserHost } from "./host";
+import { BrowserHost, BrowserWindow } from "./host";
 
 export class FrontendLSPManager {
   private client: LanguageClient | null = null;
@@ -106,6 +106,11 @@ export class FrontendLSPManager {
    * Set up integration with editor manager
    */
   private setupEditorIntegration(editorManager: EditorManager): void {
+    // Listen to file open events to restore diagnostics
+    editorManager.onFileOpen((uri) => {
+      this.restoreDiagnostics(uri);
+    });
+
     // Listen to content changes
     editorManager.onContentChange((uri, content) => {
       if (this.client) {
@@ -137,6 +142,15 @@ export class FrontendLSPManager {
         }
       }
     });
+  }
+
+  /**
+   * Restore diagnostics for a file
+   */
+  restoreDiagnostics(uri: string): void {
+    if (this.host && this.host.window instanceof BrowserWindow) {
+      (this.host.window as BrowserWindow).reapplyDiagnostics(uri);
+    }
   }
 
   /**

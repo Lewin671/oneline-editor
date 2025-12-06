@@ -17,13 +17,16 @@ export function StatusBar() {
 
   const currentModel =
     currentFile && editorManager ? editorManager.getModel(currentFile) : null;
-  const diagnosticsKey = currentModel?.uri.toString();
-  const diagnostics = diagnosticsKey
-    ? diagnosticsByUri[diagnosticsKey]
-    : undefined;
 
-  const errors = diagnostics?.errors ?? 0;
-  const warnings = diagnostics?.warnings ?? 0;
+  // Calculate total errors and warnings across all files in the workspace
+  const totalErrors = Object.values(diagnosticsByUri).reduce(
+    (acc, d) => acc + (d?.errors ?? 0),
+    0,
+  );
+  const totalWarnings = Object.values(diagnosticsByUri).reduce(
+    (acc, d) => acc + (d?.warnings ?? 0),
+    0,
+  );
 
   const languageId =
     currentLanguageId ||
@@ -65,11 +68,11 @@ export function StatusBar() {
       >
         <div className="flex items-center gap-1.5 rounded px-1.5 py-[2px] hover:bg-background/40 transition-colors">
           <XCircle className="h-3.5 w-3.5" />
-          <span className="tabular-nums text-foreground">{errors}</span>
+          <span className="tabular-nums text-foreground">{totalErrors}</span>
         </div>
         <div className="flex items-center gap-1.5 rounded px-1.5 py-[2px] hover:bg-background/40 transition-colors">
           <AlertTriangle className="h-3.5 w-3.5" />
-          <span className="tabular-nums text-foreground">{warnings}</span>
+          <span className="tabular-nums text-foreground">{totalWarnings}</span>
         </div>
       </button>
       <div className="flex-1" />

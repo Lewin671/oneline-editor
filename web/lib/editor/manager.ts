@@ -18,6 +18,7 @@ export class EditorManager {
   private models: Map<string, FileModel> = new Map();
   private currentUri: string | null = null;
   private changeListeners: Array<(uri: string, content: string) => void> = [];
+  private fileOpenListeners: Array<(uri: string) => void> = [];
 
   /**
    * Attach to an existing Monaco Editor instance
@@ -70,6 +71,7 @@ export class EditorManager {
     if (this.editor) {
       this.editor.setModel(fileModel.model);
       this.currentUri = normalizedUri;
+      this.notifyFileOpen(normalizedUri);
     }
   }
 
@@ -139,6 +141,17 @@ export class EditorManager {
     const normalizedUri = monaco.Uri.parse(uri).toString();
     const fileModel = this.models.get(normalizedUri);
     return fileModel ? fileModel.model.getValue() : null;
+  }
+
+  /**
+   * Subscribe to file open events
+   */
+  onFileOpen(listener: (uri: string) => void): void {
+    this.fileOpenListeners.push(listener);
+  }
+
+  private notifyFileOpen(uri: string): void {
+    this.fileOpenListeners.forEach((l) => l(uri));
   }
 
   /**

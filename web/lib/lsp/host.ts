@@ -62,6 +62,7 @@ export class BrowserWindow implements IWindow {
   }
 
   publishDiagnostics(uri: string, diagnostics: Diagnostic[]): void {
+    console.log(`[LSP] publishDiagnostics for ${uri}, count: ${diagnostics.length}`);
     let targetUri = uri;
     let model = monaco.editor.getModel(monaco.Uri.parse(uri));
 
@@ -109,6 +110,7 @@ export class BrowserWindow implements IWindow {
       code: d.code?.toString(),
     }));
 
+    console.log(`[LSP] setDiagnostics: uri=${targetUri}, errors=${errors}, warnings=${warnings}, details=${details.length}`);
     useEditorStore.getState().setDiagnostics(targetUri, { errors, warnings }, details);
   }
 
@@ -154,6 +156,37 @@ export class BrowserWindow implements IWindow {
 
   getDiagnostics(uri: string): Diagnostic[] {
     return this.diagnosticsMap.get(uri) || [];
+  }
+
+  reapplyDiagnostics(uri: string): void {
+    console.log(`[LSP] reapplyDiagnostics for ${uri}`);
+    let diagnostics = this.diagnosticsMap.get(uri);
+
+    // If not found, try fuzzy matching
+    if (!diagnostics) {
+      const targetPath = monaco.Uri.parse(uri).path;
+      for (const [key, value] of this.diagnosticsMap.entries()) {
+        const keyPath = monaco.Uri.parse(key).path;
+        // Check if paths match (ignoring scheme/host differences)
+        if (
+          keyPath === targetPath ||
+          (keyPath.length > 1 && targetPath.endsWith(keyPath)) ||
+          (targetPath.length > 1 && keyPath.endsWith(targetPath))
+        ) {
+          console.log(`[LSP] Found fuzzy match for ${uri} -> ${key}`);
+          diagnostics = value;
+          break;
+        }
+      }
+    }
+
+    if (diagnostics) {
+      const model = monaco.editor.getModel(monaco.Uri.parse(uri));
+      if (model) {
+        const markers = diagnostics.map((d) => this.convertDiagnosticToMarker(d));
+        monaco.editor.setModelMarkers(model, "lsp", markers);
+      }
+    }
   }
 }
 
