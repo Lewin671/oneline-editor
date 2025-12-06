@@ -7,11 +7,14 @@ import {
   FilePlus,
   Folder,
   FolderPlus,
-  Plus,
+  RefreshCw,
   Trash2,
 } from "lucide-react";
 import React, { useState } from "react";
 import { ContextMenu, ContextMenuItem } from "./ContextMenu";
+
+// API configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export interface FileTreeNode {
   name: string;
@@ -93,11 +96,14 @@ export function FileTree({
           onClick: async () => {
             const newName = prompt(`Rename ${node.name}:`, node.name);
             if (newName && newName !== node.name) {
-              const parentPath = node.path.substring(
-                0,
-                node.path.lastIndexOf("/"),
-              );
-              const newPath = `${parentPath}/${newName}`.replace(/\/+/g, "/");
+              const lastSlashIndex = node.path.lastIndexOf("/");
+              const parentPath =
+                lastSlashIndex > 0
+                  ? node.path.substring(0, lastSlashIndex)
+                  : "";
+              const newPath = parentPath
+                ? `${parentPath}/${newName}`
+                : `/${newName}`;
               await renamePath(node.path, newPath);
               onRefresh();
             }
@@ -164,7 +170,7 @@ export function FileTree({
             title="Refresh"
             onClick={onRefresh}
           >
-            <Plus className="h-4 w-4" />
+            <RefreshCw className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -205,7 +211,7 @@ export function FileTree({
 // API helper functions
 async function createFile(path: string): Promise<void> {
   try {
-    const response = await fetch(`http://localhost:3001/api/file${path}`, {
+    const response = await fetch(`${API_BASE_URL}/api/file${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: "", languageId: "plaintext" }),
@@ -226,7 +232,7 @@ async function createFile(path: string): Promise<void> {
 
 async function createFolder(path: string): Promise<void> {
   try {
-    const response = await fetch(`http://localhost:3001/api/folder${path}`, {
+    const response = await fetch(`${API_BASE_URL}/api/folder${path}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
     });
@@ -246,7 +252,7 @@ async function createFolder(path: string): Promise<void> {
 
 async function renamePath(oldPath: string, newPath: string): Promise<void> {
   try {
-    const response = await fetch("http://localhost:3001/api/rename", {
+    const response = await fetch(`${API_BASE_URL}/api/rename`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ oldPath, newPath }),
@@ -267,7 +273,7 @@ async function renamePath(oldPath: string, newPath: string): Promise<void> {
 
 async function deletePath(path: string): Promise<void> {
   try {
-    const response = await fetch(`http://localhost:3001/api/path${path}`, {
+    const response = await fetch(`${API_BASE_URL}/api/path${path}`, {
       method: "DELETE",
     });
     if (!response.ok) {

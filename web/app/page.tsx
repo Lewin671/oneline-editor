@@ -17,6 +17,9 @@ const CodeEditor = dynamic(
   },
 );
 
+// API configuration
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
 const getLanguageIdFromPath = (path: string): string => {
   if (path.endsWith(".ts") || path.endsWith(".tsx")) return "typescript";
   if (path.endsWith(".js") || path.endsWith(".jsx")) return "javascript";
@@ -46,7 +49,7 @@ export default function Page() {
   const fetchFiles = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:3001/api/files");
+      const response = await fetch(`${API_BASE_URL}/api/files`);
       if (response.ok) {
         const fileTree = await response.json();
         setFiles(fileTree);
@@ -80,7 +83,7 @@ export default function Page() {
 
       try {
         // Fetch file content from server
-        const response = await fetch(`http://localhost:3001/api/file${path}`);
+        const response = await fetch(`${API_BASE_URL}/api/file${path}`);
         if (!response.ok) {
           console.error("Failed to fetch file content");
           return;
