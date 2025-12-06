@@ -59,12 +59,20 @@ app.get('/api/files', async (req, res) => {
 app.get('/api/file/*', async (req, res) => {
   try {
     // Extract the file path from the URL (everything after /api/file/)
-    const filePath = '/' + (req.params as any)[0];
+    const params = req.params as { '0'?: string };
+    const requestPath = params['0'];
+    if (!requestPath) {
+      res.status(400).json({ error: 'File path is required' });
+      return;
+    }
+    
+    const filePath = '/' + requestPath;
     const content = await fileSystem.readFileContent(filePath);
     res.type('text/plain').send(content);
   } catch (error) {
     console.error('[API] Error reading file:', error);
-    res.status(404).json({ error: 'File not found' });
+    const errorMessage = error instanceof Error ? error.message : 'File not found';
+    res.status(404).json({ error: errorMessage });
   }
 });
 

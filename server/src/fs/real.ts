@@ -161,8 +161,16 @@ export class RealFileSystem {
    */
   async readFileContent(filePath: string): Promise<string> {
     const fullPath = path.join(this.workspaceRoot, filePath.replace(/^\//, ''));
+    
+    // Security check: ensure the resolved path is within workspace
+    const resolvedPath = path.resolve(fullPath);
+    const resolvedWorkspace = path.resolve(this.workspaceRoot);
+    if (!resolvedPath.startsWith(resolvedWorkspace)) {
+      throw new Error(`Access denied: path outside workspace`);
+    }
+    
     try {
-      return await fs.readFile(fullPath, 'utf-8');
+      return await fs.readFile(resolvedPath, 'utf-8');
     } catch (error) {
       throw new Error(`Failed to read file: ${filePath}`);
     }
