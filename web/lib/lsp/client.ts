@@ -103,44 +103,57 @@ export class FrontendLSPManager {
   }
 
   /**
+   * Sync document with LSP server
+   */
+  private syncDocumentWithLSP(
+    editorManager: EditorManager,
+    uri: string,
+    content?: string,
+  ): void {
+    if (!this.client) return;
+
+    const model = editorManager.getModel(uri);
+    if (!model) return;
+
+    // Always use model.uri.toString() for consistent URI format
+    const modelUri = model.uri.toString();
+    const text = content ?? model.getValue();
+
+    if (!this.isDocumentOpen(modelUri)) {
+      this.didOpenTextDocument(
+        modelUri,
+        model.getLanguageId(),
+        (model as any).getVersionId?.() ?? 1,
+        text,
+      );
+    }
+
+    this.client.didChange({
+      textDocument: {
+        uri: modelUri,
+        version: (model as any).getVersionId(),
+      },
+      contentChanges: [
+        {
+          text,
+        },
+      ],
+    });
+  }
+
+  /**
    * Set up integration with editor manager
    */
   private setupEditorIntegration(editorManager: EditorManager): void {
-    // Listen to file open events to restore diagnostics
+    // Listen to file open events to restore diagnostics and sync with LSP
     editorManager.onFileOpen((uri) => {
       this.restoreDiagnostics(uri);
+      this.syncDocumentWithLSP(editorManager, uri);
     });
 
     // Listen to content changes
     editorManager.onContentChange((uri, content) => {
-      if (this.client) {
-        const model = editorManager.getModel(uri);
-        if (model) {
-          // Always use model.uri.toString() for consistent URI format
-          const modelUri = model.uri.toString();
-          
-          if (!this.isDocumentOpen(modelUri)) {
-            this.didOpenTextDocument(
-              modelUri,
-              model.getLanguageId(),
-              (model as any).getVersionId?.() ?? 1,
-              model.getValue(),
-            );
-          }
-
-          this.client.didChange({
-            textDocument: {
-              uri: modelUri,
-              version: (model as any).getVersionId(),
-            },
-            contentChanges: [
-              {
-                text: content,
-              },
-            ],
-          });
-        }
-      }
+      this.syncDocumentWithLSP(editorManager, uri, content);
     });
   }
 
