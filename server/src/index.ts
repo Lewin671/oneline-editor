@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express from 'express';
 import { createServer } from 'http';
 import path from 'path';
@@ -11,6 +11,11 @@ import { LSPProxy } from './lsp/proxy.js';
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load environment variables from root directory
+// Look for .env in the project root (two levels up from dist/index.js)
+const envPath = path.resolve(__dirname, '../../.env');
+dotenv.config({ path: envPath });
 
 // Load environment variables
 const PORT = parseInt(process.env.PORT || '3001', 10);
