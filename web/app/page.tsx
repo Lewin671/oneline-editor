@@ -7,7 +7,7 @@ import { ThemeManager } from "@/components/ThemeManager";
 import { TopBar } from "@/components/TopBar";
 import { useEditorStore } from "@/lib/store";
 import dynamic from "next/dynamic";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 const CodeEditor = dynamic(
   () => import("@/components/CodeEditor").then((mod) => mod.CodeEditor),
@@ -16,22 +16,6 @@ const CodeEditor = dynamic(
     loading: () => <div className="h-full w-full bg-muted/10 animate-pulse" />,
   },
 );
-
-// Mock file system
-const initialFiles: FileTreeNode[] = [
-  {
-    name: "src",
-    path: "/src",
-    type: "directory",
-    children: [
-      { name: "index.ts", path: "/src/index.ts", type: "file" },
-      { name: "utils.ts", path: "/src/utils.ts", type: "file" },
-      { name: "main.go", path: "/src/main.go", type: "file" },
-    ],
-  },
-  { name: "package.json", path: "/package.json", type: "file" },
-  { name: "README.md", path: "/README.md", type: "file" },
-];
 
 const getLanguageIdFromPath = (path: string): string => {
   if (path.endsWith(".ts") || path.endsWith(".tsx")) return "typescript";
@@ -42,35 +26,6 @@ const getLanguageIdFromPath = (path: string): string => {
   return "plaintext";
 };
 
-const getMockContent = (path: string, languageId: string): string => {
-  if (languageId === "go") {
-    return `package main
-
-import "fmt"
-
-func main() {
-\tfmt.Println("Hello from Go")
-}
-`;
-  }
-
-  if (languageId === "typescript") {
-    return `// ${path}
-
-export function greet(name: string) {
-  return \`Hello, \${name}!\`;
-}
-
-console.log(greet("World"));
-`;
-  }
-
-  return `// Content of ${path}
-
-console.log("Hello World");
-`;
-};
-
 export default function Page() {
   const {
     editorManager,
@@ -78,34 +33,62 @@ export default function Page() {
     setCurrentFile,
     setCurrentLanguageId,
   } = useEditorStore();
-  const [files] = useState<FileTreeNode[]>(initialFiles);
+  const [files, setFiles] = useState<FileTreeNode[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch file tree on mount
+  useEffect(() => {
+    const fetchFiles = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/files');
+        if (response.ok) {
+          const fileTree = await response.json();
+          setFiles(fileTree);
+        } else {
+          console.error('Failed to fetch file tree');
+        }
+      } catch (error) {
+        console.error('Error fetching file tree:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFiles();
+  }, []);
 
   const handleFileSelect = useCallback(
-    (path: string) => {
+    async (path: string) => {
       const languageId = getLanguageIdFromPath(path);
       setCurrentFile(path);
       setCurrentLanguageId(languageId);
 
-      // In a real app, we would fetch content. For now, mock content.
-      const content = getMockContent(path, languageId);
-
       if (!editorManager) return;
 
-      editorManager.openFile(path, content, languageId);
-
-      const model = editorManager.getModel(path);
-      if (model) {
-        // Note: Don't reset diagnostics here. They will be updated by LSP's publishDiagnostics.
-        // The reapplyDiagnostics call in onFileOpen will restore cached diagnostics if available.
-
-        if (lspManager && !lspManager.isDocumentOpen(model.uri.toString())) {
-          lspManager.didOpenTextDocument(
-            model.uri.toString(),
-            model.getLanguageId(),
-            (model as any).getVersionId?.() ?? 1,
-            model.getValue(),
-          );
+      try {
+        // Fetch file content from server
+        const response = await fetch(`http://localhost:3001/api/file${path}`);
+        if (!response.ok) {
+          console.error('Failed to fetch file content');
+          return;
         }
+        const content = await response.text();
+
+        editorManager.openFile(path, content, languageId);
+
+        const model = editorManager.getModel(path);
+        if (model) {
+          if (lspManager && !lspManager.isDocumentOpen(model.uri.toString())) {
+            lspManager.didOpenTextDocument(
+              model.uri.toString(),
+              model.getLanguageId(),
+              (model as any).getVersionId?.() ?? 1,
+              model.getValue(),
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Error loading file:', error);
       }
     },
     [
@@ -121,7 +104,11 @@ export default function Page() {
       <ThemeManager />
       <TopBar />
       <div className="flex flex-1 overflow-hidden">
-        <FileTree files={files} onFileSelect={handleFileSelect} />
+        <FileTree 
+          files={files} 
+          onFileSelect={handleFileSelect}
+          isLoading={isLoading}
+        />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex-1 overflow-hidden">
             <CodeEditor />

@@ -8,6 +8,13 @@ export interface FileEntry {
   languageId: string;
 }
 
+export interface FileTreeNode {
+  name: string;
+  path: string;
+  type: 'file' | 'directory';
+  children?: FileTreeNode[];
+}
+
 /**
  * RealFileSystem directly maps to the actual file system at a workspace root
  * instead of maintaining virtual files in memory.
@@ -94,6 +101,71 @@ export class RealFileSystem {
    */
   getAllFiles(): FileEntry[] {
     throw new Error('getAllFiles() is not supported in RealFileSystem');
+  }
+
+  /**
+   * List files and directories in the workspace as a tree structure
+   * Includes empty directories
+   */
+  async listFileTree(relativePath: string = '/'): Promise<FileTreeNode[]> {
+    const basePath = relativePath === '/' ? this.workspaceRoot : path.join(this.workspaceRoot, relativePath);
+    
+    try {
+      const entries = await fs.readdir(basePath, { withFileTypes: true });
+      const nodes: FileTreeNode[] = [];
+
+      for (const entry of entries) {
+        // Skip hidden files/folders (starting with .)
+        if (entry.name.startsWith('.')) {
+          continue;
+        }
+
+        const fullPath = path.join(basePath, entry.name);
+        const relativeToWorkspace = path.relative(this.workspaceRoot, fullPath);
+        const nodePath = '/' + relativeToWorkspace.replace(/\\/g, '/');
+
+        if (entry.isDirectory()) {
+          // Recursively get children
+          const children = await this.listFileTree(relativeToWorkspace);
+          nodes.push({
+            name: entry.name,
+            path: nodePath,
+            type: 'directory',
+            children: children.length > 0 ? children : [] // Include empty array for empty directories
+          });
+        } else if (entry.isFile()) {
+          nodes.push({
+            name: entry.name,
+            path: nodePath,
+            type: 'file'
+          });
+        }
+      }
+
+      // Sort: directories first, then files, both alphabetically
+      return nodes.sort((a, b) => {
+        if (a.type === b.type) {
+          return a.name.localeCompare(b.name);
+        }
+        return a.type === 'directory' ? -1 : 1;
+      });
+    } catch (error) {
+      // If directory doesn't exist or can't be read, return empty array
+      console.error(`Error listing files in ${basePath}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Read file content by path (not URI)
+   */
+  async readFileContent(filePath: string): Promise<string> {
+    const fullPath = path.join(this.workspaceRoot, filePath.replace(/^\//, ''));
+    try {
+      return await fs.readFile(fullPath, 'utf-8');
+    } catch (error) {
+      throw new Error(`Failed to read file: ${filePath}`);
+    }
   }
 
   /**

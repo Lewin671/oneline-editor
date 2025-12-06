@@ -44,6 +44,30 @@ const fileSystem = new RealFileSystem(WORKSPACE_ROOT);
 const lsManager = new LanguageServerManager(WORKSPACE_ROOT);
 const wsServer = new LSPWebSocketServer(server, '/lsp');
 
+// API endpoint to get file tree
+app.get('/api/files', async (req, res) => {
+  try {
+    const fileTree = await fileSystem.listFileTree();
+    res.json(fileTree);
+  } catch (error) {
+    console.error('[API] Error getting file tree:', error);
+    res.status(500).json({ error: 'Failed to get file tree' });
+  }
+});
+
+// API endpoint to get file content
+app.get('/api/file/*', async (req, res) => {
+  try {
+    // Extract the file path from the URL (everything after /api/file/)
+    const filePath = '/' + (req.params as any)[0];
+    const content = await fileSystem.readFileContent(filePath);
+    res.type('text/plain').send(content);
+  } catch (error) {
+    console.error('[API] Error reading file:', error);
+    res.status(404).json({ error: 'File not found' });
+  }
+});
+
 // Store proxies per client
 const clientProxies = new Map<string, LSPProxy>();
 

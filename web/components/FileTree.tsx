@@ -14,9 +14,10 @@ export interface FileTreeNode {
 interface FileTreeProps {
   files: FileTreeNode[];
   onFileSelect: (path: string) => void;
+  isLoading?: boolean;
 }
 
-export function FileTree({ files, onFileSelect }: FileTreeProps) {
+export function FileTree({ files, onFileSelect, isLoading = false }: FileTreeProps) {
   return (
     <div className="h-full w-64 border-r bg-muted/10 flex flex-col">
       <div className="p-2 border-b flex items-center justify-between">
@@ -28,13 +29,19 @@ export function FileTree({ files, onFileSelect }: FileTreeProps) {
         </div>
       </div>
       <div className="flex-1 overflow-auto p-2">
-        {files.map((file) => (
-          <FileTreeNodeItem
-            key={file.path}
-            node={file}
-            onSelect={onFileSelect}
-          />
-        ))}
+        {isLoading ? (
+          <div className="text-sm text-muted-foreground p-2">Loading files...</div>
+        ) : files.length === 0 ? (
+          <div className="text-sm text-muted-foreground p-2">No files found</div>
+        ) : (
+          files.map((file) => (
+            <FileTreeNodeItem
+              key={file.path}
+              node={file}
+              onSelect={onFileSelect}
+            />
+          ))
+        )}
       </div>
     </div>
   );
