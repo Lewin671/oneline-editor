@@ -96,6 +96,94 @@ export class RealFileSystem {
   }
 
   /**
+   * Create a new directory in the real file system
+   */
+  async createDirectory(dirPath: string): Promise<void> {
+    const fullPath = path.join(this.workspaceRoot, dirPath.replace(/^\//, ''));
+    
+    // Security check: ensure the resolved path is within workspace
+    const resolvedPath = path.resolve(fullPath);
+    const resolvedWorkspace = path.resolve(this.workspaceRoot);
+    if (!resolvedPath.startsWith(resolvedWorkspace)) {
+      throw new Error(`Access denied: path outside workspace`);
+    }
+    
+    await fs.mkdir(resolvedPath, { recursive: true });
+  }
+
+  /**
+   * Delete a file or directory (recursively) from the file system
+   */
+  async deletePath(targetPath: string): Promise<void> {
+    const fullPath = path.join(this.workspaceRoot, targetPath.replace(/^\//, ''));
+    
+    // Security check: ensure the resolved path is within workspace
+    const resolvedPath = path.resolve(fullPath);
+    const resolvedWorkspace = path.resolve(this.workspaceRoot);
+    if (!resolvedPath.startsWith(resolvedWorkspace)) {
+      throw new Error(`Access denied: path outside workspace`);
+    }
+    
+    try {
+      const stats = await fs.stat(resolvedPath);
+      if (stats.isDirectory()) {
+        await fs.rm(resolvedPath, { recursive: true, force: true });
+      } else {
+        await fs.unlink(resolvedPath);
+        // Clean up tracking data
+        const uri = this.pathToUri(resolvedPath);
+        this.fileVersions.delete(uri);
+        this.fileLanguages.delete(uri);
+      }
+    } catch (error) {
+      throw new Error(`Failed to delete: ${targetPath}`);
+    }
+  }
+
+  /**
+   * Rename a file or directory in the file system
+   */
+  async renamePath(oldPath: string, newPath: string): Promise<void> {
+    const oldFullPath = path.join(this.workspaceRoot, oldPath.replace(/^\//, ''));
+    const newFullPath = path.join(this.workspaceRoot, newPath.replace(/^\//, ''));
+    
+    // Security check: ensure both paths are within workspace
+    const resolvedOldPath = path.resolve(oldFullPath);
+    const resolvedNewPath = path.resolve(newFullPath);
+    const resolvedWorkspace = path.resolve(this.workspaceRoot);
+    
+    if (!resolvedOldPath.startsWith(resolvedWorkspace) || !resolvedNewPath.startsWith(resolvedWorkspace)) {
+      throw new Error(`Access denied: path outside workspace`);
+    }
+    
+    // Ensure target directory exists
+    const newDir = path.dirname(newFullPath);
+    await fs.mkdir(newDir, { recursive: true });
+    
+    // Rename the file/directory
+    await fs.rename(resolvedOldPath, resolvedNewPath);
+    
+    // Update tracking data for files
+    const oldUri = this.pathToUri(resolvedOldPath);
+    const newUri = this.pathToUri(resolvedNewPath);
+    
+    if (this.fileVersions.has(oldUri)) {
+      const version = this.fileVersions.get(oldUri);
+      const languageId = this.fileLanguages.get(oldUri);
+      
+      this.fileVersions.delete(oldUri);
+      this.fileLanguages.delete(oldUri);
+      
+      if (version !== undefined) {
+        this.fileVersions.set(newUri, version);
+      }
+      if (languageId !== undefined) {
+        this.fileLanguages.set(newUri, languageId);
+      }
+    }
+  }
+
+  /**
    * Get all files (not implemented for real file system)
    * This would require scanning the entire workspace, which is expensive
    */
