@@ -190,6 +190,24 @@ export class EditorManager {
   }
 
   /**
+   * Reveal position in editor (scroll to and select)
+   */
+  revealPosition(line: number, column: number): void {
+    if (!this.editor) return;
+
+    const position = { lineNumber: line, column };
+    
+    // Set cursor position
+    this.editor.setPosition(position);
+    
+    // Reveal position in center of editor
+    this.editor.revealPositionInCenter(position);
+    
+    // Focus editor
+    this.editor.focus();
+  }
+
+  /**
    * Dispose editor and all models
    */
   dispose(): void {

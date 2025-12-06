@@ -59,6 +59,7 @@ export function ProblemsPanel() {
     diagnosticsByUri,
     isProblemsOpen,
     setProblemsOpen,
+    editorManager,
   } = useEditorStore();
 
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
@@ -123,6 +124,46 @@ export function ProblemsPanel() {
       }
       return next;
     });
+  };
+
+  const handleDiagnosticClick = async (item: DiagnosticItem) => {
+    if (!editorManager) return;
+
+    const path = getRelativePath(item.uri);
+    
+    // Check if file is already open
+    const currentUri = editorManager.getCurrentUri();
+    if (currentUri && currentUri.includes(path)) {
+      // File is already open, just reveal position
+      editorManager.revealPosition(item.line, item.column);
+    } else {
+      // Need to open the file first
+      try {
+        const response = await fetch(`http://localhost:3001/api/file${path}`);
+        if (!response.ok) {
+          console.error('Failed to fetch file content');
+          return;
+        }
+        const content = await response.text();
+        
+        // Determine language ID from path
+        let languageId = 'plaintext';
+        if (path.endsWith('.ts') || path.endsWith('.tsx')) languageId = 'typescript';
+        else if (path.endsWith('.js') || path.endsWith('.jsx')) languageId = 'javascript';
+        else if (path.endsWith('.json')) languageId = 'json';
+        else if (path.endsWith('.md')) languageId = 'markdown';
+        
+        // Open file
+        editorManager.openFile(path, content, languageId);
+        
+        // Reveal position after a short delay to ensure file is loaded
+        setTimeout(() => {
+          editorManager.revealPosition(item.line, item.column);
+        }, 100);
+      } catch (error) {
+        console.error('Error loading file:', error);
+      }
+    }
   };
 
   const hasProblems = sortedFiles.length > 0;
@@ -212,6 +253,7 @@ export function ProblemsPanel() {
                           <div
                             key={`${item.uri}-${item.line}-${item.column}-${idx}`}
                             className="flex items-start gap-2 pl-6 pr-2 py-0.5 hover:bg-muted/40 cursor-pointer"
+                            onClick={() => handleDiagnosticClick(item)}
                           >
                             <span className={iconInfo.color}>
                               {iconInfo.icon}
