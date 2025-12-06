@@ -145,6 +145,13 @@ export class FrontendLSPManager {
    * Set up integration with editor manager
    */
   private setupEditorIntegration(editorManager: EditorManager): void {
+    // Sync all already-opened files to LSP server
+    // This ensures files opened before LSP connection get LSP features
+    const openFiles = editorManager.getOpenFiles();
+    openFiles.forEach((uri) => {
+      this.syncDocumentWithLSP(editorManager, uri);
+    });
+
     // Listen to file open events to restore diagnostics and sync with LSP
     editorManager.onFileOpen((uri) => {
       this.restoreDiagnostics(uri);

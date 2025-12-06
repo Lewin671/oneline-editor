@@ -29,12 +29,17 @@ const getLanguageIdFromPath = (path: string): string => {
 export default function Page() {
   const {
     editorManager,
-    lspManager,
     setCurrentFile,
     setCurrentLanguageId,
   } = useEditorStore();
   const [files, setFiles] = useState<FileTreeNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Store pending file to open when editorManager is not yet ready
+  const [pendingFile, setPendingFile] = useState<{
+    path: string;
+    content: string;
+    languageId: string;
+  } | null>(null);
 
   // Fetch file tree on mount
   useEffect(() => {
@@ -57,13 +62,19 @@ export default function Page() {
     fetchFiles();
   }, []);
 
+  // Open pending file when editorManager becomes ready
+  useEffect(() => {
+    if (editorManager && pendingFile) {
+      editorManager.openFile(pendingFile.path, pendingFile.content, pendingFile.languageId);
+      setPendingFile(null);
+    }
+  }, [editorManager, pendingFile]);
+
   const handleFileSelect = useCallback(
     async (path: string) => {
       const languageId = getLanguageIdFromPath(path);
       setCurrentFile(path);
       setCurrentLanguageId(languageId);
-
-      if (!editorManager) return;
 
       try {
         // Fetch file content from server
@@ -74,26 +85,20 @@ export default function Page() {
         }
         const content = await response.text();
 
-        editorManager.openFile(path, content, languageId);
-
-        const model = editorManager.getModel(path);
-        if (model) {
-          if (lspManager && !lspManager.isDocumentOpen(model.uri.toString())) {
-            lspManager.didOpenTextDocument(
-              model.uri.toString(),
-              model.getLanguageId(),
-              (model as any).getVersionId?.() ?? 1,
-              model.getValue(),
-            );
-          }
+        if (!editorManager) {
+          // Store pending file to open when editor is ready
+          setPendingFile({ path, content, languageId });
+          return;
         }
+
+        // Open file in editor - LSP sync is handled automatically via onFileOpen listener
+        editorManager.openFile(path, content, languageId);
       } catch (error) {
         console.error('Error loading file:', error);
       }
     },
     [
       editorManager,
-      lspManager,
       setCurrentFile,
       setCurrentLanguageId,
     ],
