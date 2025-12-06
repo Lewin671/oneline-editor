@@ -111,9 +111,12 @@ export class FrontendLSPManager {
       if (this.client) {
         const model = editorManager.getModel(uri);
         if (model) {
-          if (!this.isDocumentOpen(uri)) {
+          // Always use model.uri.toString() for consistent URI format
+          const modelUri = model.uri.toString();
+          
+          if (!this.isDocumentOpen(modelUri)) {
             this.didOpenTextDocument(
-              uri,
+              modelUri,
               model.getLanguageId(),
               (model as any).getVersionId?.() ?? 1,
               model.getValue(),
@@ -122,7 +125,7 @@ export class FrontendLSPManager {
 
           this.client.didChange({
             textDocument: {
-              uri,
+              uri: modelUri,
               version: (model as any).getVersionId(),
             },
             contentChanges: [

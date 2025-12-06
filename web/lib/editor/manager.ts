@@ -41,11 +41,13 @@ export class EditorManager {
    * Open a file in the editor
    */
   openFile(uri: string, content: string, languageId: string): void {
-    let fileModel = this.models.get(uri);
+    // Always use Monaco URI string format for consistency
+    const monacoUri = monaco.Uri.parse(uri);
+    const normalizedUri = monacoUri.toString();
+    
+    let fileModel = this.models.get(normalizedUri);
 
     if (!fileModel) {
-      // Create new model
-      const monacoUri = monaco.Uri.parse(uri);
       // Check if model already exists in monaco (e.g. from previous session)
       let model = monaco.editor.getModel(monacoUri);
       if (!model) {
@@ -56,18 +58,18 @@ export class EditorManager {
       }
 
       fileModel = {
-        uri,
+        uri: normalizedUri,
         model,
         languageId,
       };
 
-      this.models.set(uri, fileModel);
+      this.models.set(normalizedUri, fileModel);
     }
 
     // Set model to editor
     if (this.editor) {
       this.editor.setModel(fileModel.model);
-      this.currentUri = uri;
+      this.currentUri = normalizedUri;
     }
   }
 
@@ -75,12 +77,13 @@ export class EditorManager {
    * Close a file
    */
   closeFile(uri: string): void {
-    const fileModel = this.models.get(uri);
+    const normalizedUri = monaco.Uri.parse(uri).toString();
+    const fileModel = this.models.get(normalizedUri);
     if (fileModel) {
       fileModel.model.dispose();
-      this.models.delete(uri);
+      this.models.delete(normalizedUri);
 
-      if (this.currentUri === uri) {
+      if (this.currentUri === normalizedUri) {
         this.currentUri = null;
         if (this.editor) {
           this.editor.setModel(null);
@@ -107,7 +110,8 @@ export class EditorManager {
    * Get model by URI
    */
   getModel(uri: string): monaco.editor.ITextModel | null {
-    return this.models.get(uri)?.model || null;
+    const normalizedUri = monaco.Uri.parse(uri).toString();
+    return this.models.get(normalizedUri)?.model || null;
   }
 
   /**
@@ -121,7 +125,8 @@ export class EditorManager {
    * Update file content
    */
   updateFileContent(uri: string, content: string): void {
-    const fileModel = this.models.get(uri);
+    const normalizedUri = monaco.Uri.parse(uri).toString();
+    const fileModel = this.models.get(normalizedUri);
     if (fileModel) {
       fileModel.model.setValue(content);
     }
@@ -131,7 +136,8 @@ export class EditorManager {
    * Get file content
    */
   getFileContent(uri: string): string | null {
-    const fileModel = this.models.get(uri);
+    const normalizedUri = monaco.Uri.parse(uri).toString();
+    const fileModel = this.models.get(normalizedUri);
     return fileModel ? fileModel.model.getValue() : null;
   }
 

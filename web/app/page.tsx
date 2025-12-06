@@ -1,6 +1,7 @@
 "use client";
 
 import { FileTree, FileTreeNode } from "@/components/FileTree";
+import { ProblemsPanel } from "@/components/ProblemsPanel";
 import { StatusBar } from "@/components/StatusBar";
 import { ThemeManager } from "@/components/ThemeManager";
 import { TopBar } from "@/components/TopBar";
@@ -71,14 +72,22 @@ console.log("Hello World");
 };
 
 export default function Page() {
-  const { editorManager, lspManager, setCurrentFile } = useEditorStore();
+  const {
+    editorManager,
+    lspManager,
+    setCurrentFile,
+    setCurrentLanguageId,
+    setDiagnostics,
+  } = useEditorStore();
   const [files] = useState<FileTreeNode[]>(initialFiles);
 
   const handleFileSelect = useCallback(
     (path: string) => {
-      setCurrentFile(path);
-      // In a real app, we would fetch content. For now, mock content.
       const languageId = getLanguageIdFromPath(path);
+      setCurrentFile(path);
+      setCurrentLanguageId(languageId);
+
+      // In a real app, we would fetch content. For now, mock content.
       const content = getMockContent(path, languageId);
 
       if (!editorManager) return;
@@ -86,16 +95,27 @@ export default function Page() {
       editorManager.openFile(path, content, languageId);
 
       const model = editorManager.getModel(path);
-      if (model && lspManager && !lspManager.isDocumentOpen(model.uri.toString())) {
-        lspManager.didOpenTextDocument(
-          model.uri.toString(),
-          model.getLanguageId(),
-          (model as any).getVersionId?.() ?? 1,
-          model.getValue(),
-        );
+      if (model) {
+        // Seed diagnostics for UI so the status bar shows 0/0 immediately
+        setDiagnostics(model.uri.toString(), { errors: 0, warnings: 0 }, []);
+
+        if (lspManager && !lspManager.isDocumentOpen(model.uri.toString())) {
+          lspManager.didOpenTextDocument(
+            model.uri.toString(),
+            model.getLanguageId(),
+            (model as any).getVersionId?.() ?? 1,
+            model.getValue(),
+          );
+        }
       }
     },
-    [editorManager, lspManager, setCurrentFile],
+    [
+      editorManager,
+      lspManager,
+      setCurrentFile,
+      setCurrentLanguageId,
+      setDiagnostics,
+    ],
   );
 
   return (
@@ -104,8 +124,11 @@ export default function Page() {
       <TopBar />
       <div className="flex flex-1 overflow-hidden">
         <FileTree files={files} onFileSelect={handleFileSelect} />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <CodeEditor />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            <CodeEditor />
+          </div>
+          <ProblemsPanel />
         </div>
       </div>
       <StatusBar />
