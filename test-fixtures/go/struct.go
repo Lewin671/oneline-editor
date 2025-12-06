@@ -1,6 +1,6 @@
 // Test fixture for Go struct symbol navigation
-// Usage: Place cursor on 'User' in line 12 and press F12
-// Expected: Cursor jumps to line 5 (struct definition)
+// Usage: Place cursor on 'User' in line 15 and press F12
+// Expected: Cursor jumps to line 9 (struct definition)
 
 package main
 

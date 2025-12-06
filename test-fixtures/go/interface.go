@@ -1,6 +1,6 @@
 // Test fixture for Go interface symbol navigation
-// Usage: Place cursor on 'Greeter' in line 21 and press F12
-// Expected: Cursor jumps to line 5 (interface definition)
+// Usage: Place cursor on 'Greeter' in line 22 and press F12
+// Expected: Cursor jumps to line 9 (interface definition)
 
 package main
 

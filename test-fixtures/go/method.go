@@ -1,6 +1,6 @@
 // Test fixture for Go method symbol navigation
-// Usage: Place cursor on 'Greet' in line 16 and press F12
-// Expected: Cursor jumps to line 9 (method definition)
+// Usage: Place cursor on 'Greet' in line 19 and press F12
+// Expected: Cursor jumps to line 13 (method definition)
 
 package main
 

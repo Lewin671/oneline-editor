@@ -48,13 +48,13 @@ test-fixtures/
 
 ### function.ts
 - **Test**: Function definition navigation
-- **Action**: Place cursor on `greet` in line 5, press F12
-- **Expected**: Cursor jumps to line 1 (function definition)
+- **Action**: Place cursor on `greet` in line 9, press F12
+- **Expected**: Cursor jumps to line 5 (function definition)
 
 ### class.ts
 - **Test**: Class definition navigation
-- **Action**: Place cursor on `User` in line 11, press F12
-- **Expected**: Cursor jumps to line 4 (class definition)
+- **Action**: Place cursor on `User` in line 13, press F12
+- **Expected**: Cursor jumps to line 5 (class definition)
 
 ### interface.ts
 - **Test**: Interface definition navigation
@@ -70,23 +70,23 @@ test-fixtures/
 
 ### function.go
 - **Test**: Function definition navigation
-- **Action**: Place cursor on `greet` in line 10, press F12
-- **Expected**: Cursor jumps to line 5 (function definition)
+- **Action**: Place cursor on `greet` in line 14, press F12
+- **Expected**: Cursor jumps to line 9 (function definition)
 
 ### struct.go
 - **Test**: Struct definition navigation
-- **Action**: Place cursor on `User` in line 12, press F12
-- **Expected**: Cursor jumps to line 5 (struct definition)
+- **Action**: Place cursor on `User` in line 15, press F12
+- **Expected**: Cursor jumps to line 9 (struct definition)
 
 ### method.go
 - **Test**: Method definition navigation
-- **Action**: Place cursor on `Greet` in line 16, press F12
-- **Expected**: Cursor jumps to line 9 (method definition)
+- **Action**: Place cursor on `Greet` in line 19, press F12
+- **Expected**: Cursor jumps to line 13 (method definition)
 
 ### interface.go
 - **Test**: Interface definition navigation
-- **Action**: Place cursor on `Greeter` in line 21, press F12
-- **Expected**: Cursor jumps to line 5 (interface definition)
+- **Action**: Place cursor on `Greeter` in line 22, press F12
+- **Expected**: Cursor jumps to line 9 (interface definition)
 
 ## Prerequisites
 
