@@ -117,6 +117,8 @@ export class HttpCloudAgent implements ICloudAgent {
     }
 
     try {
+      // Note: AbortSignal.timeout() requires Node.js 16.14.0+
+      // This project requires Node.js 18+ (see package.json engines field)
       const response = await fetch(`${this.config.endpoint}/health`, {
         method: 'GET',
         signal: AbortSignal.timeout(this.config.timeout || 5000),
@@ -137,6 +139,8 @@ export class HttpCloudAgent implements ICloudAgent {
       headers['Authorization'] = `Bearer ${this.config.apiKey}`;
     }
 
+    // Note: AbortSignal.timeout() requires Node.js 16.14.0+
+    // This project requires Node.js 18+ (see package.json engines field)
     const response = await fetch(`${this.config.endpoint}${path}`, {
       method: 'POST',
       headers,
