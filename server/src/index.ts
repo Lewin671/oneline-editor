@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import express from 'express';
+import cors from 'cors';
 import { createServer } from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -27,6 +28,10 @@ const app = express();
 const server = createServer(app);
 
 // Middleware
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../../web/dist')));
 
