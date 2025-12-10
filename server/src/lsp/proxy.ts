@@ -9,8 +9,10 @@ import {
   CompletionParams,
   HoverParams,
   DefinitionParams,
-  ReferenceParams
+  ReferenceParams,
+  DocumentFormattingParams
 } from 'vscode-languageserver-protocol';
+import { TextEdit } from 'vscode-languageserver-types';
 
 export interface LSPMessage {
   jsonrpc: '2.0';
@@ -98,6 +100,10 @@ export class LSPProxy {
         case 'textDocument/references':
           const referencesResult = await this.handleReferences(params as ReferenceParams);
           return this.createSuccessResponse(id, referencesResult);
+
+        case 'textDocument/formatting':
+          const formattingResult = await this.handleFormatting(params as DocumentFormattingParams);
+          return this.createSuccessResponse(id, formattingResult);
 
         default:
           return this.createErrorResponse(id, -32601, `Method not found: ${method}`);
@@ -269,8 +275,12 @@ export class LSPProxy {
     return this.withUriLock(params.textDocument.uri, async () => {
       const file = await this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
-        console.error(`[LSP Proxy] File not found: ${params.textDocument.uri}`);
-        throw new Error(`File not found: ${params.textDocument.uri}`);
+        console.error(
+          `[LSP Proxy] Completion failed: File not found: ${params.textDocument.uri}`,
+        );
+        throw new Error(
+          `Failed to provide completion: File not found: ${params.textDocument.uri}`,
+        );
       }
 
       console.log(`[LSP Proxy] File found, language: ${file.languageId}`);
@@ -301,7 +311,9 @@ export class LSPProxy {
     return this.withUriLock(params.textDocument.uri, async () => {
       const file = await this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
-        throw new Error(`File not found: ${params.textDocument.uri}`);
+        throw new Error(
+          `Failed to provide hover: File not found: ${params.textDocument.uri}`,
+        );
       }
 
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
@@ -324,7 +336,9 @@ export class LSPProxy {
     return this.withUriLock(params.textDocument.uri, async () => {
       const file = await this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
-        throw new Error(`File not found: ${params.textDocument.uri}`);
+        throw new Error(
+          `Failed to get definition: File not found: ${params.textDocument.uri}`,
+        );
       }
 
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
@@ -347,7 +361,9 @@ export class LSPProxy {
     return this.withUriLock(params.textDocument.uri, async () => {
       const file = await this.fileSystem.getFile(params.textDocument.uri);
       if (!file) {
-        throw new Error(`File not found: ${params.textDocument.uri}`);
+        throw new Error(
+          `Failed to find references: File not found: ${params.textDocument.uri}`,
+        );
       }
 
       const client = await this.lsManager.getOrCreateClient(file.languageId, {
@@ -360,6 +376,31 @@ export class LSPProxy {
         textDocument: { uri: realUri },
         position: params.position,
         context: params.context
+      });
+    });
+  }
+
+  /**
+   * Handle textDocument/formatting
+   */
+  private async handleFormatting(params: DocumentFormattingParams): Promise<TextEdit[] | null> {
+    return this.withUriLock(params.textDocument.uri, async () => {
+      const file = await this.fileSystem.getFile(params.textDocument.uri);
+      if (!file) {
+        throw new Error(
+          `Failed to format document: File not found: ${params.textDocument.uri}`,
+        );
+      }
+
+      const client = await this.lsManager.getOrCreateClient(file.languageId, {
+        wsConnection: this.wsConnection
+      });
+      const filePath = this.fileSystem.uriToPath(params.textDocument.uri);
+      const realUri = `file://${filePath}`;
+
+      return client.sendRequest('textDocument/formatting', {
+        textDocument: { uri: realUri },
+        options: params.options
       });
     });
   }

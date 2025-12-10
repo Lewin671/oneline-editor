@@ -87,12 +87,18 @@ export function CodeEditor() {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
 
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     const model = editorManager?.getCurrentModel();
     if (!model) return;
 
-    const content = model.getValue();
+    try {
+      await lspManager?.formatDocument(editorManager, model);
+    } catch (error) {
+      console.error("Failed to format document:", error);
+    }
+
     const uri = model.uri.toString();
+    const content = model.getValue();
 
     // Send didSave to LSP server so diagnostics stay up-to-date
     lspManager?.didSaveTextDocument(uri, content);
@@ -175,7 +181,7 @@ export function CodeEditor() {
         event.preventDefault();
         // When the editor isn't focused, still prevent the browser save dialog
         if (!editor.hasTextFocus()) {
-          handleSave();
+          void handleSave();
         }
       }
     };
