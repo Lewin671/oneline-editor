@@ -190,7 +190,8 @@ wsServer.onMethod('initialize', async (clientId, message) => {
         },
         hoverProvider: true,
         definitionProvider: true,
-        referencesProvider: true
+        referencesProvider: true,
+        documentFormattingProvider: true
       },
       serverInfo: {
         name: 'online-editor-lsp-proxy',
@@ -273,6 +274,16 @@ wsServer.onMethod('textDocument/definition', async (clientId, message) => {
 });
 
 wsServer.onMethod('textDocument/references', async (clientId, message) => {
+  const proxy = clientProxies.get(clientId);
+  if (proxy) {
+    const response = await proxy.handleMessage(message);
+    if (response) {
+      wsServer.sendToClient(clientId, response);
+    }
+  }
+});
+
+wsServer.onMethod('textDocument/formatting', async (clientId, message) => {
   const proxy = clientProxies.get(clientId);
   if (proxy) {
     const response = await proxy.handleMessage(message);

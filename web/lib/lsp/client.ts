@@ -1,5 +1,6 @@
 import { LanguageClient } from "@lewin671/lsp-client";
 import * as monaco from "monaco-editor";
+import { TextEdit } from "vscode-languageserver-types";
 import { EditorManager } from "../editor/manager";
 import { WebSocketTransport } from "../transport/websocket";
 import { BrowserHost, BrowserWindow } from "./host";
@@ -75,6 +76,9 @@ export class FrontendLSPManager {
         },
         publishDiagnostics: {
           relatedInformation: true,
+        },
+        formatting: {
+          dynamicRegistration: true,
         },
       },
       workspace: {
@@ -356,9 +360,16 @@ export class FrontendLSPManager {
                   sortText: item.sortText,
                   filterText: filterText,
                   range: itemRange,
-                  additionalTextEdits: item.additionalTextEdits?.map(
-                    (edit: any) => this.convertTextEdit(edit),
-                  ),
+                  additionalTextEdits: item.additionalTextEdits
+                    ? item.additionalTextEdits
+                        .map((edit: TextEdit) => this.convertTextEdit(edit))
+                        .filter(
+                          (
+                            edit,
+                          ): edit is monaco.editor.IIdentifiedSingleEditOperation =>
+                            Boolean(edit),
+                        )
+                    : undefined,
                   command: this.convertCommand(item.command),
                 };
               });
@@ -491,7 +502,9 @@ export class FrontendLSPManager {
   /**
    * Convert LSP TextEdit to Monaco ISingleEditOperation
    */
-  private convertTextEdit(edit: any): any {
+  private convertTextEdit(
+    edit: TextEdit | null | undefined,
+  ): monaco.editor.IIdentifiedSingleEditOperation | undefined {
     if (!edit) return undefined;
     return {
       range: {
@@ -607,6 +620,42 @@ export class FrontendLSPManager {
   }
 
   /**
+   * Format document and apply edits
+   */
+  async formatDocument(
+    editorManager: EditorManager,
+    model?: monaco.editor.ITextModel | null,
+  ): Promise<void> {
+    if (!this.client) return;
+
+    const targetModel = model ?? editorManager.getCurrentModel();
+    if (!targetModel) return;
+
+    const uri = targetModel.uri.toString();
+    const modelOptions = targetModel.getOptions();
+    const edits = await this.requestFormatting(uri, {
+      tabSize: Number(modelOptions.tabSize),
+      insertSpaces: Boolean(modelOptions.insertSpaces),
+    });
+    if (!edits || edits.length === 0) {
+      return;
+    }
+
+    const monacoEdits = edits
+      .map((edit) => this.convertTextEdit(edit))
+      .filter(
+        (edit): edit is monaco.editor.IIdentifiedSingleEditOperation =>
+          Boolean(edit),
+      );
+
+    if (monacoEdits.length === 0) {
+      return;
+    }
+
+    targetModel.pushEditOperations([], monacoEdits, () => null);
+  }
+
+  /**
    * Request completion
    */
   async requestCompletion(
@@ -623,6 +672,26 @@ export class FrontendLSPManager {
       textDocument: { uri },
       position: { line, character },
       context,
+    });
+  }
+
+  /**
+   * Request document formatting
+   */
+  async requestFormatting(
+    uri: string,
+    options?: { tabSize?: number; insertSpaces?: boolean },
+  ): Promise<TextEdit[] | null> {
+    if (!this.client) {
+      throw new Error("LSP client not initialized");
+    }
+
+    return this.client.sendRequest("textDocument/formatting", {
+      textDocument: { uri },
+      options: {
+        tabSize: options?.tabSize ?? 2,
+        insertSpaces: options?.insertSpaces ?? true,
+      },
     });
   }
 

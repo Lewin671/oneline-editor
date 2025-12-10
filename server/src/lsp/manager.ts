@@ -131,6 +131,7 @@ export class LanguageServerManager {
                   dynamicRegistration: true,
                   hierarchicalDocumentSymbolSupport: true
                 },
+                formatting: { dynamicRegistration: true },
                 publishDiagnostics: { relatedInformation: true }
               },
               workspace: {
