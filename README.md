@@ -5,7 +5,7 @@ A modern web-based code editor with Language Server Protocol (LSP) support for G
 ## Features
 
 - 🚀 Real-time code editing with Monaco Editor
-- 🔍 Intelligent code completion, hover information, and go-to-definition
+- 🔍 Intelligent code completion, hover information, and [symbol navigation (go-to-definition)](SYMBOL_NAVIGATION.md)
 - 🐛 Real-time error diagnostics
 - 🌐 WebSocket-based communication
 - 📁 Real file system integration (directly maps to workspace directory)
@@ -143,6 +143,20 @@ Run property-based tests only:
 ```bash
 npm run test:property
 ```
+
+### Symbol Navigation Testing
+
+To verify symbol navigation (go-to-definition) functionality:
+
+```bash
+# Run symbol navigation unit tests
+cd server && npm test -- symbol-navigation.test.ts
+
+# Set up manual verification workspace
+./verify-symbol-navigation.sh
+```
+
+See [SYMBOL_NAVIGATION.md](SYMBOL_NAVIGATION.md) for detailed testing instructions.
 
 ## Architecture
 
